@@ -1,0 +1,9 @@
+name = "DCGridOverlay"
+uuid = "62065dec-c1eb-46b2-a04c-acfcb40a19b0"
+authors = ["giacomobastianel <91736508+GiacomoBastianel@users.noreply.github.com>"]
+version = "0.1.0"
+
+[deps]
+CbaOPF = "b09c5755-86bc-4b69-9fb0-eea9d409a5ca"
+PowerModelsACDC = "ff45984e-d068-5f4c-9e32-c4133509d236"
+XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
