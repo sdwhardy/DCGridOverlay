@@ -5,9 +5,10 @@ using XLSX
 using PowerModels; const _PM = PowerModels
 using PowerModelsACDC; const _PMACDC = PowerModelsACDC
 using JSON
+using JuMP
+using CbaOPF
 
 function create_grid(start_hour,number_of_hours;output_filename::String = "./test_cases/DC_overlay_grid")
-
     # Uploading an example test system
     test_case_5_acdc = "case5_acdc.m"
     s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true)
@@ -51,8 +52,8 @@ function create_grid(start_hour,number_of_hours;output_filename::String = "./tes
         DC_overlay_grid["bus"]["$idx"]["gs"] = 0.0 
         DC_overlay_grid["bus"]["$idx"]["bs"] = 0.0 
         DC_overlay_grid["bus"]["$idx"]["area"] = 1 
-        #DC_overlay_grid["bus"]["$idx"]["vm"] = xx
-        #DC_overlay_grid["bus"]["$idx"]["va"] = xx
+        DC_overlay_grid["bus"]["$idx"]["vm"] = 1.0
+        DC_overlay_grid["bus"]["$idx"]["va"] = 1.0
         DC_overlay_grid["bus"]["$idx"]["base_kv"] = 380 #kV
         DC_overlay_grid["bus"]["$idx"]["vmax"] = 1.1
         DC_overlay_grid["bus"]["$idx"]["vmin"] = 0.9
@@ -74,7 +75,7 @@ function create_grid(start_hour,number_of_hours;output_filename::String = "./tes
         DC_overlay_grid["busdc"]["$idx"]["gs"] = 0.0
         DC_overlay_grid["busdc"]["$idx"]["bs"] = 0.0
         DC_overlay_grid["busdc"]["$idx"]["area"] = 2
-        #DC_overlay_grid["busdc"]["$idx"]["vm"] = r[9] #buses_dc_dict[:,9][i]
+        DC_overlay_grid["busdc"]["$idx"]["vm"] = 1.0
         DC_overlay_grid["busdc"]["$idx"]["Vdcmax"] = 1.1
         DC_overlay_grid["busdc"]["$idx"]["Vdcmin"] = 0.9
         DC_overlay_grid["busdc"]["$idx"]["Vdc"] = 1
@@ -154,9 +155,9 @@ function create_grid(start_hour,number_of_hours;output_filename::String = "./tes
             DC_overlay_grid["convdc"]["$idx"]["index"] = idx
             DC_overlay_grid["convdc"]["$idx"]["status"] = 1
             DC_overlay_grid["convdc"]["$idx"]["Pacmax"] = 200.0 # Values to not having this power constraining the OPF
-            DC_overlay_grid["convdc"]["$idx"]["Pacmin"] = 200.0
+            DC_overlay_grid["convdc"]["$idx"]["Pacmin"] = - 200.0
             DC_overlay_grid["convdc"]["$idx"]["Qacmin"] = 200.0
-            DC_overlay_grid["convdc"]["$idx"]["Qacmax"] = 200.0
+            DC_overlay_grid["convdc"]["$idx"]["Qacmax"] = - 200.0
             #DC_overlay_grid["convdc"]["$idx"]["Imax"] = value of 1.11 taken from the test grid
             DC_overlay_grid["convdc"]["$idx"]["Pg"] = 0.0 #Adjusting with pu values
             DC_overlay_grid["convdc"]["$idx"]["ratio"] = 1
@@ -177,7 +178,7 @@ function create_grid(start_hour,number_of_hours;output_filename::String = "./tes
         DC_overlay_grid["load"]["$idx"]["pavg"] = xf["Demand"]["$(loads[idx])5"]/DC_overlay_grid["baseMVA"]
         DC_overlay_grid["load"]["$idx"]["cosphi"] = 0.9
         DC_overlay_grid["load"]["$idx"]["pd"] = DC_overlay_grid["load"]["$idx"]["pmax"]/2 # load_dict[:,4][i]/DC_overlay_grid["baseMVA"] 
-        DC_overlay_grid["load"]["$idx"]["qd"] = (DC_overlay_grid["load"]["$idx"]["pmax"]/2)/sqrt(1 - DC_overlay_grid["load"]["$idx"]["cosphi"]^2)
+        DC_overlay_grid["load"]["$idx"]["qd"] = (DC_overlay_grid["load"]["$idx"]["pmax"]/2)*sqrt(1 - DC_overlay_grid["load"]["$idx"]["cosphi"]^2)
         DC_overlay_grid["load"]["$idx"]["index"] = idx
         DC_overlay_grid["load"]["$idx"]["status"] = 1
         DC_overlay_grid["load"]["$idx"]["source_id"] = []
@@ -224,7 +225,8 @@ function create_grid(start_hour,number_of_hours;output_filename::String = "./tes
         DC_overlay_grid["gen"]["$idx"]["marginal_cost"] = 0.0
         DC_overlay_grid["gen"]["$idx"]["co2_add_on"] = 0.0
         DC_overlay_grid["gen"]["$idx"]["ncost"] = 2
-        DC_overlay_grid["gen"]["$idx"]["model"] = 1
+        DC_overlay_grid["gen"]["$idx"]["model"] = 2
+        DC_overlay_grid["gen"]["$idx"]["type"] = "Solar PV"
         DC_overlay_grid["gen"]["$idx"]["gen_status"] = 1
         DC_overlay_grid["gen"]["$idx"]["vg"] = 1.0
         DC_overlay_grid["gen"]["$idx"]["source_id"] = []
@@ -246,7 +248,8 @@ function create_grid(start_hour,number_of_hours;output_filename::String = "./tes
         DC_overlay_grid["gen"]["$count_"]["marginal_cost"] = 0.0
         DC_overlay_grid["gen"]["$count_"]["co2_add_on"] = 0.0
         DC_overlay_grid["gen"]["$count_"]["ncost"] = 2
-        DC_overlay_grid["gen"]["$count_"]["model"] = 1
+        DC_overlay_grid["gen"]["$count_"]["model"] = 2
+        DC_overlay_grid["gen"]["$count_"]["type"] = "Onshore Wind"
         DC_overlay_grid["gen"]["$count_"]["gen_status"] = 1
         DC_overlay_grid["gen"]["$count_"]["vg"] = 1.0
         DC_overlay_grid["gen"]["$count_"]["source_id"] = []
@@ -268,7 +271,8 @@ function create_grid(start_hour,number_of_hours;output_filename::String = "./tes
         DC_overlay_grid["gen"]["$count_"]["marginal_cost"] = 0.0
         DC_overlay_grid["gen"]["$count_"]["co2_add_on"] = 0.0
         DC_overlay_grid["gen"]["$count_"]["ncost"] = 2
-        DC_overlay_grid["gen"]["$count_"]["model"] = 1
+        DC_overlay_grid["gen"]["$count_"]["model"] = 2
+        DC_overlay_grid["gen"]["$count_"]["type"] = "Offshore Wind"
         DC_overlay_grid["gen"]["$count_"]["gen_status"] = 1
         DC_overlay_grid["gen"]["$count_"]["vg"] = 1.0
         DC_overlay_grid["gen"]["$count_"]["source_id"] = []
@@ -290,7 +294,8 @@ function create_grid(start_hour,number_of_hours;output_filename::String = "./tes
         DC_overlay_grid["gen"]["$count_"]["marginal_cost"] = 2.0 # Made-up values
         DC_overlay_grid["gen"]["$count_"]["co2_add_on"] = 1.0 # Made-up values
         DC_overlay_grid["gen"]["$count_"]["ncost"] = 2
-        DC_overlay_grid["gen"]["$count_"]["model"] = 1
+        DC_overlay_grid["gen"]["$count_"]["model"] = 2
+        DC_overlay_grid["gen"]["$count_"]["type"] = "Conventional"
         DC_overlay_grid["gen"]["$count_"]["gen_status"] = 1
         DC_overlay_grid["gen"]["$count_"]["vg"] = 1.0
         DC_overlay_grid["gen"]["$count_"]["source_id"] = []
@@ -336,6 +341,7 @@ function create_grid(start_hour,number_of_hours;output_filename::String = "./tes
     DC_overlay_grid["switch"] = deepcopy(test_grid["switch"])
     DC_overlay_grid["shunt"] = deepcopy(test_grid["shunt"])
     DC_overlay_grid["dcline"] = deepcopy(test_grid["dcline"])
+    DC_overlay_grid["storage"] = deepcopy(test_grid["storage"])
 
     string_data = JSON.json(DC_overlay_grid)
     open(output_filename*".json","w" ) do f
@@ -343,20 +349,40 @@ function create_grid(start_hour,number_of_hours;output_filename::String = "./tes
     end
 
     string_data_demand = JSON.json(demand_time_series)
-    open(output_filename*"_Demand"*".json","w" ) do f
+    open(output_filename*"_Demand_$(start_hour)_$(number_of_hours)"*".json","w" ) do f
         write(f,string_data_demand)
     end
 
     string_data_res = JSON.json(res_time_series)
-    open(output_filename*"_RES"*".json","w" ) do f
+    open(output_filename*"_RES_$(start_hour)_$(number_of_hours)"*".json","w" ) do f
         write(f,string_data_res)
     end
     return DC_overlay_grid, demand_time_series, res_time_series
 end
 
-# Name check for RES generators and time series
-#for i in 1:18 
-#    print(res_time_series["$i"]["name"],"\n")
-#    print(DC_overlay_grid["gen"]["$i"]["name"],"\n")
-#end
+function solve_opf_timestep(data,RES,load,timesteps;output_filename::String = "./results/OPF_results_selected_timesteps")
+    result_timesteps = Dict{String,Any}()
+    for t in timesteps
+        test_case_timestep = deepcopy(data)
+        for (g_id,g) in test_case_timestep["gen"]
+            if g["type"] != "Conventional"
+                g["pmax"] = deepcopy(g["pmax"]*RES[t][g_id]["time_series"])
+                g["qmax"] = deepcopy(g["qmax"]*RES[t][g_id]["time_series"]) 
+            end
+        end
+        for (l_id,l) in test_case_timestep["load"]
+            l["pd"] = deepcopy(load[t]["Bus_"*l_id]["time_series"]*l["cosphi"])
+            l["qd"] = deepcopy(load[t]["Bus_"*l_id]["time_series"]*sqrt(1-(l["cosphi"])^2))
+        end
+        result_timesteps["$t"] = deepcopy(_PMACDC.run_acdcopf(test_case_timestep, _PM.DCPPowerModel, gurobi; setting = s))
+    end
+
+    string_data = JSON.json(result_timesteps)
+    open(output_filename*".json","w" ) do f
+        write(f,string_data)
+    end
+
+
+    return result_timesteps
+end
 

@@ -12,6 +12,7 @@ import JuMP
 import Plots
 import PlotlyJS
 
-include("../scripts/create_grid.jl")
+include("../scripts/create_grid_and_opf_functions.jl")
+include("../scripts/run_opf.jl")
 
 end # module DCGridOverlay
