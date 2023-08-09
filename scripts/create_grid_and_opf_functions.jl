@@ -40,7 +40,7 @@ function create_grid(start_hour,number_of_hours;output_filename::String = "./tes
     for idx in 1:number_of_buses
         DC_overlay_grid["bus"]["$idx"] = Dict{String,Any}()
         DC_overlay_grid["bus"]["$idx"]["name"] = "Bus_$(idx)"
-        DC_overlay_grid["bus"]["$idx"]["index"] = idx #i
+        DC_overlay_grid["bus"]["$idx"]["index"] = idx 
         DC_overlay_grid["bus"]["$idx"]["bus_i"] = idx 
         if idx == 3
             DC_overlay_grid["bus"]["$idx"]["bus_type"] = 3 #slack bus
@@ -107,9 +107,9 @@ function create_grid(start_hour,number_of_hours;output_filename::String = "./tes
             DC_overlay_grid["branch"]["$idx"]["rate_a"] = r[2]/DC_overlay_grid["baseMVA"]
             DC_overlay_grid["branch"]["$idx"]["rate_b"] = r[2]/DC_overlay_grid["baseMVA"] 
             DC_overlay_grid["branch"]["$idx"]["rate_c"] = r[2]/DC_overlay_grid["baseMVA"]
-            DC_overlay_grid["branch"]["$idx"]["ratio"] = 1 #/ branches_dict[:,11][i]
-            DC_overlay_grid["branch"]["$idx"]["angmin"] = -pi #deepcopy(test_grid["branch"]["1"]["angmin"])
-            DC_overlay_grid["branch"]["$idx"]["angmax"] = pi #deepcopy(test_grid["branch"]["1"]["angmax"])
+            DC_overlay_grid["branch"]["$idx"]["ratio"] = 1 
+            DC_overlay_grid["branch"]["$idx"]["angmin"] = -pi
+            DC_overlay_grid["branch"]["$idx"]["angmax"] = pi 
             DC_overlay_grid["branch"]["$idx"]["br_status"] = 1
             DC_overlay_grid["branch"]["$idx"]["tap"] = 1.0
             DC_overlay_grid["branch"]["$idx"]["transformer"] = false
@@ -135,9 +135,9 @@ function create_grid(start_hour,number_of_hours;output_filename::String = "./tes
             DC_overlay_grid["branchdc"]["$idx"]["c"] = 0.0
             DC_overlay_grid["branchdc"]["$idx"]["l"] = 0.0
             DC_overlay_grid["branchdc"]["$idx"]["status"] = 1
-            DC_overlay_grid["branchdc"]["$idx"]["rateA"] = r[2]/DC_overlay_grid["baseMVA"] #
-            DC_overlay_grid["branchdc"]["$idx"]["rateB"] = r[2]/DC_overlay_grid["baseMVA"] #
-            DC_overlay_grid["branchdc"]["$idx"]["rateC"] = r[2]/DC_overlay_grid["baseMVA"] # 
+            DC_overlay_grid["branchdc"]["$idx"]["rateA"] = r[2]/DC_overlay_grid["baseMVA"] # Total [MVA] (+/-)
+            DC_overlay_grid["branchdc"]["$idx"]["rateB"] = r[2]/DC_overlay_grid["baseMVA"] # Total [MVA] (+/-)
+            DC_overlay_grid["branchdc"]["$idx"]["rateC"] = r[2]/DC_overlay_grid["baseMVA"] # Total [MVA] (+/-)
             DC_overlay_grid["branchdc"]["$idx"]["ratio"] = 1
             DC_overlay_grid["branchdc"]["$idx"]["source_id"] = []
             push!(DC_overlay_grid["branchdc"]["$idx"]["source_id"],"branchdc")
@@ -150,8 +150,8 @@ function create_grid(start_hour,number_of_hours;output_filename::String = "./tes
     for idx in 1:number_of_buses
             DC_overlay_grid["convdc"]["$idx"] = Dict{String,Any}()
             DC_overlay_grid["convdc"]["$idx"] = deepcopy(test_grid["convdc"]["1"])  # To fill in default values......
-            DC_overlay_grid["convdc"]["$idx"]["busdc_i"] = idx #conv_dc_dict[:,3][i]
-            DC_overlay_grid["convdc"]["$idx"]["busac_i"] = idx #conv_dc_dict[:,2][i]
+            DC_overlay_grid["convdc"]["$idx"]["busdc_i"] = idx 
+            DC_overlay_grid["convdc"]["$idx"]["busac_i"] = idx 
             DC_overlay_grid["convdc"]["$idx"]["index"] = idx
             DC_overlay_grid["convdc"]["$idx"]["status"] = 1
             DC_overlay_grid["convdc"]["$idx"]["Pacmax"] = 200.0 # Values to not having this power constraining the OPF
