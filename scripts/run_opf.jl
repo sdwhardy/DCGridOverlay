@@ -32,8 +32,8 @@ gurobi = JuMP.optimizer_with_attributes(Gurobi.Optimizer)
 selected_timesteps_RES_time_series = Dict{String,Any}()
 selected_timesteps_load_time_series = Dict{String,Any}()
 result_timesteps = Dict{String,Any}()
-timesteps = ["476", "6541", "2511", "2723","6311", "1125"]
-#timesteps = collect(1:8760)
+#timesteps = ["476", "6541", "2511", "2723","6311", "1125"]
+timesteps = collect(1:8760)
 for l in timesteps
     if typeof(l) == String 
         selected_timesteps_RES_time_series["$l"] = Dict{String,Any}()
@@ -60,11 +60,10 @@ for l in timesteps
             selected_timesteps_load_time_series["$l"]["$i"]["time_series"] = deepcopy(load_time_series["$i"][parse(Int64,l)])
         end
     elseif typeof(l) == Int64 
-        selected_timesteps_RES_time_series["$l"] = Dict{String,Any}()
-        for i in keys(RES_time_series)
-            selected_timesteps_RES_time_series["$l"]["$i"] = Dict{String,Any}()
-            selected_timesteps_RES_time_series["$l"]["$i"]["name"] = deepcopy(RES_time_series["$i"]["name"])
-            selected_timesteps_RES_time_series["$l"]["$i"]["time_series"] = deepcopy(RES_time_series["$i"]["time_series"][l])
+        selected_timesteps_load_time_series["$l"] = Dict{String,Any}()
+        for i in keys(load_time_series)
+            selected_timesteps_load_time_series["$l"]["$i"] = Dict{String,Any}()
+            selected_timesteps_load_time_series["$l"]["$i"]["time_series"] = deepcopy(load_time_series["$i"][l])
         end
     end
 end
@@ -76,9 +75,14 @@ end
 #    b["br_r"] = b["br_r"]/100
 #end
 #
-#for (b_id,b) in test_case["convdc"]
-#    b["Imax"] = b["Imax"]*10
-#end
+for (b_id,b) in test_case["gen"]
+    if parse(Int64,b_id) <= 18
+        b["pmax"] = b["pmax"]/10
+        b["qmax"] = b["qmax"]/10
+    else
+        b["cost"][1] = 10000.0
+    end
+end
 
 # Defining function, to be cleaned up
 function solve_opf_timestep(data,RES,load,timesteps;output_filename::String = "./results/OPF_results_selected_timesteps")
