@@ -100,8 +100,8 @@ function create_grid(start_hour,number_of_hours;output_filename::String = "./tes
             DC_overlay_grid["branch"]["$idx"]["t_bus"] = parse(Int64,r[1][4])
             DC_overlay_grid["branch"]["$idx"]["br_r"] = r[7]*r[3]/DC_overlay_grid["Z_base"]   
             DC_overlay_grid["branch"]["$idx"]["br_x"] = r[8]*r[3]/DC_overlay_grid["Z_base"]   
-            DC_overlay_grid["branch"]["$idx"]["b_fr"] = 1/sqrt((DC_overlay_grid["branch"]["$idx"]["br_r"])^2+(DC_overlay_grid["branch"]["$idx"]["br_x"])^2) 
-            DC_overlay_grid["branch"]["$idx"]["b_to"] = 1/sqrt((DC_overlay_grid["branch"]["$idx"]["br_r"])^2+(DC_overlay_grid["branch"]["$idx"]["br_x"])^2)
+            DC_overlay_grid["branch"]["$idx"]["b_fr"] = 0.0 #1/sqrt((DC_overlay_grid["branch"]["$idx"]["br_r"])^2+(DC_overlay_grid["branch"]["$idx"]["br_x"])^2) 
+            DC_overlay_grid["branch"]["$idx"]["b_to"] = 0.0 #1/sqrt((DC_overlay_grid["branch"]["$idx"]["br_r"])^2+(DC_overlay_grid["branch"]["$idx"]["br_x"])^2)
             DC_overlay_grid["branch"]["$idx"]["g_fr"] = 0.0
             DC_overlay_grid["branch"]["$idx"]["g_to"] = 0.0
             DC_overlay_grid["branch"]["$idx"]["rate_a"] = r[2]/DC_overlay_grid["baseMVA"]
@@ -147,18 +147,26 @@ function create_grid(start_hour,number_of_hours;output_filename::String = "./tes
 
     # DC Converters
     DC_overlay_grid["convdc"] = Dict{String,Any}()
-    for idx in 1:number_of_buses
+    for r in XLSX.eachrow(xf["Conv_dc"])
+        i = XLSX.row_number(r)
+        if i > 1 && i <= 7 # compensate for header and limit the number of rows to the existing branches
+            idx = i - 1    
             DC_overlay_grid["convdc"]["$idx"] = Dict{String,Any}()
             DC_overlay_grid["convdc"]["$idx"] = deepcopy(test_grid["convdc"]["1"])  # To fill in default values......
             DC_overlay_grid["convdc"]["$idx"]["busdc_i"] = idx 
             DC_overlay_grid["convdc"]["$idx"]["busac_i"] = idx 
             DC_overlay_grid["convdc"]["$idx"]["index"] = idx
             DC_overlay_grid["convdc"]["$idx"]["status"] = 1
-            DC_overlay_grid["convdc"]["$idx"]["Pacmax"] = 200.0 # Values to not having this power constraining the OPF
-            DC_overlay_grid["convdc"]["$idx"]["Pacmin"] = - 200.0
-            DC_overlay_grid["convdc"]["$idx"]["Qacmin"] = 200.0
-            DC_overlay_grid["convdc"]["$idx"]["Qacmax"] = - 200.0
-            #DC_overlay_grid["convdc"]["$idx"]["Imax"] = value of 1.11 taken from the test grid
+            sum = 0
+            for (brdc_id,brdc) in DC_overlay_grid["branchdc"]
+                if brdc["fbusdc"] == idx || brdc["tbusdc"] == idx 
+                    sum = sum + brdc["rateA"]
+                end
+            end 
+            DC_overlay_grid["convdc"]["$idx"]["Pacmax"] = deepcopy(sum) # Values to not having this power constraining the OPF -> sum of the capacities coming in and going out
+            DC_overlay_grid["convdc"]["$idx"]["Pacmin"] = - deepcopy(sum)
+            DC_overlay_grid["convdc"]["$idx"]["Qacmin"] = - deepcopy(sum)
+            DC_overlay_grid["convdc"]["$idx"]["Qacmax"] = deepcopy(sum)
             DC_overlay_grid["convdc"]["$idx"]["Pg"] = 0.0 #Adjusting with pu values
             DC_overlay_grid["convdc"]["$idx"]["ratio"] = 1
             DC_overlay_grid["convdc"]["$idx"]["transformer"] = 1
@@ -166,6 +174,17 @@ function create_grid(start_hour,number_of_hours;output_filename::String = "./tes
             DC_overlay_grid["convdc"]["$idx"]["source_id"] = []
             push!(DC_overlay_grid["convdc"]["$idx"]["source_id"],"convdc")
             push!(DC_overlay_grid["convdc"]["$idx"]["source_id"], idx)
+
+            # Computed with Hakan's excel
+            DC_overlay_grid["convdc"]["$idx"]["rtf"] = r[2] 
+            DC_overlay_grid["convdc"]["$idx"]["xtf"] = r[3] 
+            DC_overlay_grid["convdc"]["$idx"]["bf"] = r[4] 
+            DC_overlay_grid["convdc"]["$idx"]["rc"] = r[5]
+            DC_overlay_grid["convdc"]["$idx"]["xc"] = r[6]
+            DC_overlay_grid["convdc"]["$idx"]["lossA"] = r[7]/DC_overlay_grid["baseMVA"] 
+            DC_overlay_grid["convdc"]["$idx"]["lossB"] = r[8]
+            DC_overlay_grid["convdc"]["$idx"]["lossCrec"] = r[9] 
+        end
     end
 
     # Load
@@ -285,7 +304,7 @@ function create_grid(start_hour,number_of_hours;output_filename::String = "./tes
         count_ += 1
         DC_overlay_grid["gen"]["$count_"] = Dict{String,Any}()
         DC_overlay_grid["gen"]["$count_"]["index"] = deepcopy(count_)
-        DC_overlay_grid["gen"]["$count_"]["gen_bus"] = deepcopy(idx) 
+        DC_overlay_grid["gen"]["$count_"]["gen_bus"] = deepcopy(idx) # SUM OF THE ENTSO-E TYNDP CAPACITY
         DC_overlay_grid["gen"]["$count_"]["pmax"] = 5*10^5/DC_overlay_grid["baseMVA"] #High value to always have adequacy, assumption, to be discussed
         DC_overlay_grid["gen"]["$count_"]["pmin"] = 0.0 
         DC_overlay_grid["gen"]["$count_"]["qmax"] =  DC_overlay_grid["gen"]["$count_"]["pmax"]*0.5

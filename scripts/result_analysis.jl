@@ -21,6 +21,7 @@ for (br_id,br) in grid["branchdc"]
     br["name"] = "DC_L_$(br["fbusdc"])$(br["tbusdc"])"
 end
 
+
 # Read results file
 output_filename = "./results/OPF_results_selected_timesteps_DCPPowerModel.json"
 results = JSON.parsefile(output_filename)
@@ -36,7 +37,7 @@ results = JSON.parsefile(output_filename)
 obj = [results[i]["objective"] for i in eachindex(results)]
 
 
-# Max load/RES
+# Max load/RES -> RUN AC OPF
 ac_branch_flow = [[results["476"]["solution"]["branch"][i]["pt"],grid["branch"][i]["name"]] for i in eachindex(results["476"]["solution"]["branch"])]
 dc_branch_flow = [[results["476"]["solution"]["branchdc"][i]["pt"],grid["branchdc"][i]["name"]] for i in eachindex(results["476"]["solution"]["branchdc"])]
 gen = [[results["476"]["solution"]["gen"][i]["pg"],grid["gen"][i]["name"]] for i in eachindex(results["476"]["solution"]["gen"]) if results["476"]["solution"]["gen"][i]["pg"] != 0.0]

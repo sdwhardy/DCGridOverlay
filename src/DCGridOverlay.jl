@@ -14,5 +14,6 @@ import PlotlyJS
 
 include("../scripts/create_grid_and_opf_functions.jl")
 include("../scripts/run_opf.jl")
+include("../scripts/result_analysis.jl")
 
 end # module DCGridOverlay

@@ -33,51 +33,78 @@ selected_timesteps_RES_time_series = Dict{String,Any}()
 selected_timesteps_load_time_series = Dict{String,Any}()
 result_timesteps = Dict{String,Any}()
 timesteps = ["476", "6541", "2511", "2723","6311", "1125"]
-
+timesteps = collect(1:8760)
 for l in timesteps
-    selected_timesteps_RES_time_series["$l"] = Dict{String,Any}()
-    for i in keys(RES_time_series)
-        selected_timesteps_RES_time_series["$l"]["$i"] = Dict{String,Any}()
-        selected_timesteps_RES_time_series["$l"]["$i"]["name"] = deepcopy(RES_time_series["$i"]["name"])
-        selected_timesteps_RES_time_series["$l"]["$i"]["time_series"] = deepcopy(RES_time_series["$i"]["time_series"][parse(Int64,l)])
+    if typeof(l) == String 
+        selected_timesteps_RES_time_series["$l"] = Dict{String,Any}()
+        for i in keys(RES_time_series)
+            selected_timesteps_RES_time_series["$l"]["$i"] = Dict{String,Any}()
+            selected_timesteps_RES_time_series["$l"]["$i"]["name"] = deepcopy(RES_time_series["$i"]["name"])
+            selected_timesteps_RES_time_series["$l"]["$i"]["time_series"] = deepcopy(RES_time_series["$i"]["time_series"][parse(Int64,l)])
+        end
+    elseif typeof(l) == Int64 
+        selected_timesteps_RES_time_series["$l"] = Dict{String,Any}()
+        for i in keys(RES_time_series)
+            selected_timesteps_RES_time_series["$l"]["$i"] = Dict{String,Any}()
+            selected_timesteps_RES_time_series["$l"]["$i"]["name"] = deepcopy(RES_time_series["$i"]["name"])
+            selected_timesteps_RES_time_series["$l"]["$i"]["time_series"] = deepcopy(RES_time_series["$i"]["time_series"][l])
+        end
     end
 end
 
 for l in timesteps
-    selected_timesteps_load_time_series["$l"] = Dict{String,Any}()
-    for i in keys(load_time_series)
-        selected_timesteps_load_time_series["$l"]["$i"] = Dict{String,Any}()
-        selected_timesteps_load_time_series["$l"]["$i"]["time_series"] = deepcopy(load_time_series["$i"][parse(Int64,l)])
+    if typeof(l) == String 
+        selected_timesteps_load_time_series["$l"] = Dict{String,Any}()
+        for i in keys(load_time_series)
+            selected_timesteps_load_time_series["$l"]["$i"] = Dict{String,Any}()
+            selected_timesteps_load_time_series["$l"]["$i"]["time_series"] = deepcopy(load_time_series["$i"][parse(Int64,l)])
+        end
+    elseif typeof(l) == Int64 
+        selected_timesteps_RES_time_series["$l"] = Dict{String,Any}()
+        for i in keys(RES_time_series)
+            selected_timesteps_RES_time_series["$l"]["$i"] = Dict{String,Any}()
+            selected_timesteps_RES_time_series["$l"]["$i"]["name"] = deepcopy(RES_time_series["$i"]["name"])
+            selected_timesteps_RES_time_series["$l"]["$i"]["time_series"] = deepcopy(RES_time_series["$i"]["time_series"][l])
+        end
     end
 end
 
 # Defining function, to be cleaned up
 function solve_opf_timestep(data,RES,load,timesteps;output_filename::String = "./results/OPF_results_selected_timesteps")
     result_timesteps_dc = Dict{String,Any}()
+    result_timesteps_ac = Dict{String,Any}()
+
     for t in timesteps
         test_case_timestep = deepcopy(data)
         for (g_id,g) in test_case_timestep["gen"]
             if g["type"] != "Conventional"
-                g["pmax"] = deepcopy(g["pmax"]*RES[t][g_id]["time_series"])
-                g["qmax"] = deepcopy(g["qmax"]*RES[t][g_id]["time_series"]) 
+                g["pmax"] = deepcopy(g["pmax"]*RES["$t"][g_id]["time_series"])
+                g["qmax"] = deepcopy(g["qmax"]*RES["$t"][g_id]["time_series"]) 
             end
         end
         for (l_id,l) in test_case_timestep["load"]
-            l["pd"] = deepcopy(load[t]["Bus_"*l_id]["time_series"]*l["cosphi"])
-            l["qd"] = deepcopy(load[t]["Bus_"*l_id]["time_series"]*sqrt(1-(l["cosphi"])^2))
+            l["pd"] = deepcopy(load["$t"]["Bus_"*l_id]["time_series"]*l["cosphi"])
+            l["qd"] = deepcopy(load["$t"]["Bus_"*l_id]["time_series"]*sqrt(1-(l["cosphi"])^2))
         end
         result_timesteps_dc["$t"] = deepcopy(_PMACDC.run_acdcopf(test_case_timestep, DCPPowerModel, gurobi; setting = s))
-        #result_timesteps_ac["$t"] = deepcopy(_PMACDC.run_acdcopf(test_case_timestep, ACPPowerModel, gurobi; setting = s))
+        result_timesteps_ac["$t"] = deepcopy(_PMACDC.run_acdcopf(test_case_timestep, ACPPowerModel, ipopt; setting = s))
     end
 
     string_data = JSON.json(result_timesteps_dc)
-    open(output_filename*"_DCPPowerModel.json","w" ) do f
+    open(output_filename*"_DCPPowerModel_$(length(timesteps))_timesteps.json","w" ) do f
         write(f,string_data)
     end
 
-
-    return result_timesteps_dc
+    string_data = JSON.json(result_timesteps_ac)
+    open(output_filename*"_ACPPowerModel$(length(timesteps))_timesteps.json","w" ) do f
+        write(f,string_data)
+    end
 end
 
-results = solve_opf_timestep(test_case,selected_timesteps_RES_time_series,selected_timesteps_load_time_series,timesteps)
+solve_opf_timestep(test_case,selected_timesteps_RES_time_series,selected_timesteps_load_time_series,timesteps)
     
+
+
+for (conv_id,conv) in test_case["convdc"]
+    print([conv["Pacmax"],conv_id],"\n")
+end
