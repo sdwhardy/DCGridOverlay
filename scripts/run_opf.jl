@@ -8,7 +8,8 @@ using Ipopt, Gurobi
 ##########################################################################
 # Call and parse the grid, RES and load time series 
 ##########################################################################
-test_case_file = "DC_overlay_grid.json"
+conv_power = 8.0
+test_case_file = "DC_overlay_grid_$(conv_power)_GW_convdc.json"
 test_case = _PM.parse_file("./test_cases/$test_case_file")
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true)
 start_hour = 1
@@ -68,24 +69,10 @@ for l in timesteps
     end
 end
 
-#for (b_id,b) in test_case["branch"]
-#    b["rate_a"] = b["rate_a"]*100
-#end
-#for (b_id,b) in test_case["branch"]
-#    b["br_r"] = b["br_r"]/100
-#end
-#
-for (b_id,b) in test_case["gen"]
-    if parse(Int64,b_id) <= 18
-        b["pmax"] = b["pmax"]/10
-        b["qmax"] = b["qmax"]/10
-    else
-        b["cost"][1] = 10000.0
-    end
-end
 
 # Defining function, to be cleaned up
-function solve_opf_timestep(data,RES,load,timesteps;output_filename::String = "./results/OPF_results_selected_timesteps")
+function solve_opf_timestep(data,RES,load,timesteps,conv_power;output_filename::String = "/Users/giacomobastianel/Library/CloudStorage/OneDrive-KULeuven/DC_grid_overlay_results/results")
+    #function solve_opf_timestep(data,RES,load,timesteps,conv_power;output_filename::String = "./results/OPF_results_selected_timesteps")
     result_timesteps_dc = Dict{String,Any}()
     result_timesteps_ac = Dict{String,Any}()
 
@@ -106,18 +93,18 @@ function solve_opf_timestep(data,RES,load,timesteps;output_filename::String = ".
     end
 
     string_data = JSON.json(result_timesteps_dc)
-    open(output_filename*"_DCPPowerModel_$(length(timesteps))_timesteps.json","w" ) do f
+    open(output_filename*"_DCPPowerModel_$(length(timesteps))_timesteps_$(conv_power)_GW_convdc.json","w" ) do f
         write(f,string_data)
     end
 
     string_data = JSON.json(result_timesteps_ac)
-    open(output_filename*"_ACPPowerModel$(length(timesteps))_timesteps.json","w" ) do f
+    open(output_filename*"_ACPPowerModel_$(length(timesteps))_timesteps_$(conv_power)_GW_convdc.json","w" ) do f
         write(f,string_data)
     end
     return result_timesteps_dc, result_timesteps_ac
 end
 
-result_dc, result_ac = solve_opf_timestep(test_case,selected_timesteps_RES_time_series,selected_timesteps_load_time_series,timesteps)
+result_dc, result_ac = solve_opf_timestep(test_case,selected_timesteps_RES_time_series,selected_timesteps_load_time_series,timesteps,conv_power)
     
 
 

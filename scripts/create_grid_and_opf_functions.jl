@@ -8,7 +8,7 @@ using JSON
 using JuMP
 using CbaOPF
 
-function create_grid(start_hour,number_of_hours;output_filename::String = "./test_cases/DC_overlay_grid")
+function create_grid(start_hour,number_of_hours,conv_power;output_filename::String = "./test_cases/DC_overlay_grid")
     # Uploading an example test system
     test_case_5_acdc = "case5_acdc.m"
     s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true)
@@ -187,6 +187,38 @@ function create_grid(start_hour,number_of_hours;output_filename::String = "./tes
         end
     end
 
+    # Count the number of converters needed to have the Pmax equal to conv_power and transmit the same amount of power
+    n_conv = Dict{String,Any}() # -> dict with the number of converters with the same power
+    for i in eachindex(DC_overlay_grid["convdc"])
+        n_conv[i] = ceil(Int,DC_overlay_grid["convdc"][i]["Pacmax"]/(conv_power*10))
+    end
+
+    original_conv = deepcopy(DC_overlay_grid["convdc"]) # -> easier to work with a deepcopy
+    
+    # Creating a set of converters for each bus in which the only indeces differing among the converters are index and source_id
+    for i in eachindex(original_conv)
+        l = length(DC_overlay_grid["convdc"])
+        new_convs = collect(1:n_conv["$i"])  
+        for n in new_convs
+            if n != 1
+                new_conv = l + n
+                DC_overlay_grid["convdc"]["$new_conv"] = deepcopy(DC_overlay_grid["convdc"]["$i"])
+                DC_overlay_grid["convdc"]["$new_conv"]["index"] = new_conv
+                DC_overlay_grid["convdc"]["$new_conv"]["source_id"] = []
+                push!(DC_overlay_grid["convdc"]["$new_conv"]["source_id"],"convdc")
+                push!(DC_overlay_grid["convdc"]["$new_conv"]["source_id"], new_conv)
+            end
+        end
+    end
+
+    # Imposing the power to each converter
+    for (conv_id,conv) in DC_overlay_grid["convdc"]
+        conv["Pacmax"] = conv_power*10 #conv["Pacmax"]/n_conv[i] # Values to not having this power constraining the OPF -> sum of the capacities coming in and going out
+        conv["Pacmin"] = - conv_power*10 #conv["Pacmin"]/n_conv[i]
+        conv["Qacmin"] = - conv_power*10 #conv["Qacmin"]/n_conv[i]
+        conv["Qacmax"] = conv_power*10 #conv["Qacmax"]/n_conv[i]
+    end
+
     # Load
     loads = ["I","J","K","L","M","N"]
     DC_overlay_grid["load"] = Dict{String,Any}()
@@ -363,7 +395,7 @@ function create_grid(start_hour,number_of_hours;output_filename::String = "./tes
     DC_overlay_grid["storage"] = deepcopy(test_grid["storage"])
 
     string_data = JSON.json(DC_overlay_grid)
-    open(output_filename*".json","w" ) do f
+    open(output_filename*"_$(conv_power)_GW_convdc.json","w" ) do f
         write(f,string_data)
     end
 
