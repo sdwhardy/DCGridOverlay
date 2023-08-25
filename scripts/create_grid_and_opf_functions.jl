@@ -6,7 +6,7 @@ using PowerModels; const _PM = PowerModels
 using PowerModelsACDC; const _PMACDC = PowerModelsACDC
 using JSON
 using JuMP
-using CbaOPF
+#using CbaOPF
 
 function create_grid(start_hour,number_of_hours,conv_power;output_filename::String = "./test_cases/DC_overlay_grid")
     # Uploading an example test system
@@ -15,7 +15,7 @@ function create_grid(start_hour,number_of_hours,conv_power;output_filename::Stri
     data_file_5_acdc = "./test_cases/$test_case_5_acdc"
     test_grid = _PM.parse_file(joinpath("./$(data_file_5_acdc)"))
     _PMACDC.process_additional_data!(test_grid)
-
+   
     test_file = "./test_cases/DC_overlay_grid.xlsx"
     #test_grid = _PM.parse_file(test_file)
 
@@ -32,8 +32,8 @@ function create_grid(start_hour,number_of_hours,conv_power;output_filename::Stri
     DC_overlay_grid["base_kv_AC"] = 380
     DC_overlay_grid["base_kv_DC"] = 525
     DC_overlay_grid["per_unit"] = true #adapt values from Excel file
-    DC_overlay_grid["Z_base"] = (DC_overlay_grid["base_kv_AC"])^2/(DC_overlay_grid["baseMVA"]*1000)
-    
+    DC_overlay_grid["Z_base"] = (DC_overlay_grid["base_kv_AC"])^2/(DC_overlay_grid["baseMVA"])
+    z_base_dc=(DC_overlay_grid["base_kv_DC"])^2/(DC_overlay_grid["baseMVA"])
 
     # Buses
     DC_overlay_grid["bus"] = Dict{String,Any}()
@@ -95,12 +95,12 @@ function create_grid(start_hour,number_of_hours,conv_power;output_filename::Stri
         DC_overlay_grid["busdc"]["$(n_busdc+i)"]["busdc_i"] = n_busdc+i
         DC_overlay_grid["busdc"]["$(n_busdc+i)"]["source_id"][2] = n_busdc+i
     end
-
+    
     # Branches
     DC_overlay_grid["branch"] = Dict{String,Any}()
     for r in XLSX.eachrow(xf["AC_grid_build"])
         i = XLSX.row_number(r)
-        if i > 1 && i <= 9 
+        if i > 5 && i <= 9 
             # compensate for header and limit the number of rows to the existing branches
             idx = i - 1
             DC_overlay_grid["branch"]["$idx"] = Dict{String,Any}()
@@ -108,10 +108,10 @@ function create_grid(start_hour,number_of_hours,conv_power;output_filename::Stri
             DC_overlay_grid["branch"]["$idx"]["index"] = idx
             DC_overlay_grid["branch"]["$idx"]["f_bus"] = parse(Int64,r[1][3])
             DC_overlay_grid["branch"]["$idx"]["t_bus"] = parse(Int64,r[1][4])
-            DC_overlay_grid["branch"]["$idx"]["br_r"] = r[7]*r[3]/DC_overlay_grid["Z_base"]   
-            DC_overlay_grid["branch"]["$idx"]["br_x"] = r[8]*r[3]/DC_overlay_grid["Z_base"]   
-            DC_overlay_grid["branch"]["$idx"]["b_fr"] = 0.0 #1/sqrt((DC_overlay_grid["branch"]["$idx"]["br_r"])^2+(DC_overlay_grid["branch"]["$idx"]["br_x"])^2) 
-            DC_overlay_grid["branch"]["$idx"]["b_to"] = 0.0 #1/sqrt((DC_overlay_grid["branch"]["$idx"]["br_r"])^2+(DC_overlay_grid["branch"]["$idx"]["br_x"])^2)
+            DC_overlay_grid["branch"]["$idx"]["br_r"] = r[7]/DC_overlay_grid["Z_base"]   
+            DC_overlay_grid["branch"]["$idx"]["br_x"] = r[8]/DC_overlay_grid["Z_base"]   
+            DC_overlay_grid["branch"]["$idx"]["b_fr"] = ((r[9])*DC_overlay_grid["Z_base"])/2 #1/sqrt((DC_overlay_grid["branch"]["$idx"]["br_r"])^2+(DC_overlay_grid["branch"]["$idx"]["br_x"])^2) 
+            DC_overlay_grid["branch"]["$idx"]["b_to"] = DC_overlay_grid["branch"]["$idx"]["b_fr"] #1/sqrt((DC_overlay_grid["branch"]["$idx"]["br_r"])^2+(DC_overlay_grid["branch"]["$idx"]["br_x"])^2)
             DC_overlay_grid["branch"]["$idx"]["g_fr"] = 0.0
             DC_overlay_grid["branch"]["$idx"]["g_to"] = 0.0
             DC_overlay_grid["branch"]["$idx"]["rate_a"] = r[2]/DC_overlay_grid["baseMVA"]
@@ -129,7 +129,6 @@ function create_grid(start_hour,number_of_hours,conv_power;output_filename::Stri
             push!(DC_overlay_grid["branch"]["$idx"]["source_id"], idx)
         end
     end
-
     # DC Branches
     DC_overlay_grid["branchdc"] = Dict{String,Any}()
     for r in XLSX.eachrow(xf["DC_grid_build"])
@@ -141,7 +140,7 @@ function create_grid(start_hour,number_of_hours,conv_power;output_filename::Stri
             DC_overlay_grid["branchdc"]["$idx"]["index"] = idx
             DC_overlay_grid["branchdc"]["$idx"]["fbusdc"] = parse(Int64,r[1][3])
             DC_overlay_grid["branchdc"]["$idx"]["tbusdc"] = parse(Int64,r[1][4])
-            DC_overlay_grid["branchdc"]["$idx"]["r"] = r[6]*r[3]/DC_overlay_grid["Z_base"]
+            DC_overlay_grid["branchdc"]["$idx"]["r"] = r[6]/z_base_dc
             DC_overlay_grid["branchdc"]["$idx"]["c"] = 0.0
             DC_overlay_grid["branchdc"]["$idx"]["l"] = 0.0
             DC_overlay_grid["branchdc"]["$idx"]["status"] = 1
@@ -156,11 +155,24 @@ function create_grid(start_hour,number_of_hours,conv_power;output_filename::Stri
     end
     # Point-to-point links
     n_branches = length(DC_overlay_grid["branchdc"])
-    for i in 1:4
-        DC_overlay_grid["branchdc"]["$(n_branches+i)"] = deepcopy(DC_overlay_grid["branchdc"]["1"])
-        DC_overlay_grid["branchdc"]["$(n_branches+i)"]["type"] = "PtP_link" 
-        DC_overlay_grid["branchdc"]["$(n_branches+i)"]["index"] = n_branches+i
-        DC_overlay_grid["branchdc"]["$(n_branches+i)"]["source_id"][2] = n_branches+i
+    println("n_branches ", n_branches)
+    #DC_overlay_grid["branch"] = Dict{String,Any}()
+    for r in XLSX.eachrow(xf["AC_grid_build"])
+        i = XLSX.row_number(r)-1
+        if i >= 1 && i < 5
+    #for i in 1:4
+            DC_overlay_grid["branchdc"]["$(n_branches+i)"] = deepcopy(DC_overlay_grid["branchdc"]["1"])
+            DC_overlay_grid["branchdc"]["$(n_branches+i)"]["type"] = "PtP_link" 
+            DC_overlay_grid["branchdc"]["$(n_branches+i)"]["index"] = n_branches+i
+            DC_overlay_grid["branchdc"]["$(n_branches+i)"]["source_id"][2] = n_branches+i
+            DC_overlay_grid["branchdc"]["$(n_branches+i)"]["r"] = (r[7])/z_base_dc
+            DC_overlay_grid["branchdc"]["$(n_branches+i)"]["c"] = 0.0
+            DC_overlay_grid["branchdc"]["$(n_branches+i)"]["l"] = 0.0
+            DC_overlay_grid["branchdc"]["$(n_branches+i)"]["status"] = 1
+            DC_overlay_grid["branchdc"]["$(n_branches+i)"]["rateA"] = r[13]/DC_overlay_grid["baseMVA"] # Total [MVA] (+/-)
+            DC_overlay_grid["branchdc"]["$(n_branches+i)"]["rateB"] = r[13]/DC_overlay_grid["baseMVA"] # Total [MVA] (+/-)
+            DC_overlay_grid["branchdc"]["$(n_branches+i)"]["rateC"] = r[13]/DC_overlay_grid["baseMVA"] # Total [MVA] (+/-)
+        end
     end
     DC_overlay_grid["branchdc"]["9"]["fbusdc"]  = 7
     DC_overlay_grid["branchdc"]["9"]["tbusdc"]  = 8 
@@ -171,7 +183,7 @@ function create_grid(start_hour,number_of_hours,conv_power;output_filename::Stri
     DC_overlay_grid["branchdc"]["12"]["fbusdc"] = 13
     DC_overlay_grid["branchdc"]["12"]["tbusdc"] = 14
 
-
+    
     # DC Converters
     DC_overlay_grid["convdc"] = Dict{String,Any}()
     for r in XLSX.eachrow(xf["Conv_dc"])
@@ -184,7 +196,7 @@ function create_grid(start_hour,number_of_hours,conv_power;output_filename::Stri
             DC_overlay_grid["convdc"]["$idx"]["busac_i"] = idx 
             DC_overlay_grid["convdc"]["$idx"]["index"] = idx
             DC_overlay_grid["convdc"]["$idx"]["status"] = 1
-            sum = 0
+            sum = 0.0
             for (brdc_id,brdc) in DC_overlay_grid["branchdc"]
                 if brdc["fbusdc"] == idx || brdc["tbusdc"] == idx 
                     sum = sum + brdc["rateA"]
@@ -194,26 +206,20 @@ function create_grid(start_hour,number_of_hours,conv_power;output_filename::Stri
             DC_overlay_grid["convdc"]["$idx"]["Pacmin"] = - deepcopy(sum)
             DC_overlay_grid["convdc"]["$idx"]["Qacmin"] = - deepcopy(sum)
             DC_overlay_grid["convdc"]["$idx"]["Qacmax"] = deepcopy(sum)
+            DC_overlay_grid["convdc"]["$idx"]["Pacrated"] = deepcopy(sum)
+            DC_overlay_grid["convdc"]["$idx"]["Qacrated"] = deepcopy(sum)
+            DC_overlay_grid["convdc"]["$idx"]["Imax"] = DC_overlay_grid["convdc"]["$idx"]["Imax"]*100
             DC_overlay_grid["convdc"]["$idx"]["Pg"] = 0.0 #Adjusting with pu values
-            DC_overlay_grid["convdc"]["$idx"]["ratio"] = 1
-            DC_overlay_grid["convdc"]["$idx"]["transformer"] = 1
-            DC_overlay_grid["convdc"]["$idx"]["reactor"] = 1
+            DC_overlay_grid["convdc"]["$idx"]["ratio"] = 0
+            DC_overlay_grid["convdc"]["$idx"]["transformer"] = 0
+            DC_overlay_grid["convdc"]["$idx"]["reactor"] = 0
             DC_overlay_grid["convdc"]["$idx"]["source_id"] = []
             push!(DC_overlay_grid["convdc"]["$idx"]["source_id"],"convdc")
             push!(DC_overlay_grid["convdc"]["$idx"]["source_id"], idx)
 
-            # Computed with Hakan's excel
-            #DC_overlay_grid["convdc"]["$idx"]["rtf"] = r[2] 
-            #DC_overlay_grid["convdc"]["$idx"]["xtf"] = r[3] 
-            #DC_overlay_grid["convdc"]["$idx"]["bf"] = r[4] 
-            #DC_overlay_grid["convdc"]["$idx"]["rc"] = r[5]
-            #DC_overlay_grid["convdc"]["$idx"]["xc"] = r[6]
-            #DC_overlay_grid["convdc"]["$idx"]["lossA"] = r[7]/DC_overlay_grid["baseMVA"] 
-            #DC_overlay_grid["convdc"]["$idx"]["lossB"] = r[8]
-            #DC_overlay_grid["convdc"]["$idx"]["lossCrec"] = r[9] 
         end
     end
-
+    
     # Count the number of converters needed to have the Pmax equal to conv_power and transmit the same amount of power
     n_conv = Dict{String,Any}() # -> dict with the number of converters with the same power
     for i in eachindex(DC_overlay_grid["convdc"])
@@ -244,10 +250,33 @@ function create_grid(start_hour,number_of_hours,conv_power;output_filename::Stri
         conv["Pacmin"] = - conv_power*10 #conv["Pacmin"]/n_conv[i]
         conv["Qacmin"] = - conv_power*10 #conv["Qacmin"]/n_conv[i]
         conv["Qacmax"] = conv_power*10 #conv["Qacmax"]/n_conv[i]
+        conv["Pacrated"] = conv_power*10 #conv["Qacmax"]/n_conv[i]
+        conv["Qacrated"] = conv_power*10 #conv["Qacmax"]/n_conv[i]
+        conv["Imax"] = conv["Imax"]*100
+
+        # Computed with Hakan's excel
+        conv["rtf"] = (((DC_overlay_grid["base_kv_AC"]*10^3)^2 / (conv["Pacmax"]*10^8) * (15 / 100)) * cos( atan(35)))/DC_overlay_grid["Z_base"]
+        #DC_overlay_grid["convdc"]["$idx"]["rtf"] = r[2] 
+        conv["xtf"] = (((DC_overlay_grid["base_kv_AC"]*10^3)^2 / (conv["Pacmax"]*10^8) * (15 / 100)) * sin( atan(35)))/DC_overlay_grid["Z_base"]
+        #DC_overlay_grid["convdc"]["$idx"]["xtf"] = r[3] 
+        conv["bf"] = 0.00003 * 2 * 3.1415 * 50 * DC_overlay_grid["Z_base"]
+        #DC_overlay_grid["convdc"]["$idx"]["bf"] = r[4] 
+        conv["rc"] = (((DC_overlay_grid["base_kv_AC"]*10^3)^2 / (conv["Pacmax"]*10^8) * (7.5 / 100)) * cos( atan(30)))/DC_overlay_grid["Z_base"]
+        #DC_overlay_grid["convdc"]["$idx"]["rc"] = r[5]
+        conv["xc"] = ((((DC_overlay_grid["base_kv_AC"]*10^3)^2 / (conv["Pacmax"]*10^8)) * (7.5 / 100)) * sin( atan(30)))/DC_overlay_grid["Z_base"]
+        #DC_overlay_grid["convdc"]["$idx"]["xc"] = r[6]
+        conv["lossA"] = (1.1033 * conv["Pacmax"]/10)
+        #DC_overlay_grid["convdc"]["$idx"]["lossA"] = r[7]/DC_overlay_grid["baseMVA"] 
+        conv["lossB"] = 0.0035 * (DC_overlay_grid["base_kv_AC"] * sqrt(3))
+        #DC_overlay_grid["convdc"]["$idx"]["lossB"] = r[8]
+        conv["lossCrec"] = (0.0035 / (conv["Pacmax"]*10^2)) * DC_overlay_grid["Z_base"]
+        #DC_overlay_grid["convdc"]["$idx"]["lossCrec"] = r[9] 
+        #conv["LossCrec"] = (0.0035 / (conv["Pacmax"]*10^2)) * DC_overlay_grid["Z_base"]
     end
 
     # Converters for the Point-to-point links
     n_convs = length(DC_overlay_grid["convdc"])
+    println("n_convs ", n_convs)
     for i in 1:8
         DC_overlay_grid["convdc"]["$(n_convs+i)"] = deepcopy(DC_overlay_grid["convdc"]["1"])
         DC_overlay_grid["convdc"]["$(n_convs+i)"]["type"] = "PtP_link" 
@@ -289,7 +318,7 @@ function create_grid(start_hour,number_of_hours,conv_power;output_filename::Stri
         push!(DC_overlay_grid["load"]["$idx"]["source_id"],"bus")
         push!(DC_overlay_grid["load"]["$idx"]["source_id"], idx)
     end
-
+    
     # Sort time series
     demands = ["A","B","C","D","E","F"]
     total_demand = ["G"]
@@ -384,6 +413,8 @@ function create_grid(start_hour,number_of_hours,conv_power;output_filename::Stri
         push!(DC_overlay_grid["gen"]["$count_"]["source_id"],"gen")
         push!(DC_overlay_grid["gen"]["$count_"]["source_id"], count_)
     end
+
+    
     ##### Conventional gens  #####
     for idx in 1:length(solar_pv) 
         count_ += 1
