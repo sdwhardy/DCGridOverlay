@@ -100,7 +100,7 @@ function create_grid(start_hour,number_of_hours,conv_power;output_filename::Stri
     DC_overlay_grid["branch"] = Dict{String,Any}()
     for r in XLSX.eachrow(xf["AC_grid_build"])
         i = XLSX.row_number(r)
-        if i > 5 && i <= 9 
+        if i > 5 && i <= 8 
             # compensate for header and limit the number of rows to the existing branches
             idx = i - 1
             DC_overlay_grid["branch"]["$idx"] = Dict{String,Any}()
@@ -341,6 +341,7 @@ function create_grid(start_hour,number_of_hours,conv_power;output_filename::Stri
     solar_pv = ["B","E","H","K","N","Q"]
     onshore_wind = ["C","F","I","L","O","R"]
     offshore_wind = ["D","G","J","M","P","S"]
+    flexible_gens = ["T","U","V","W","X","Y"]
     DC_overlay_grid["gen"] = Dict{String,Any}()
     count_ = 0
 
@@ -377,7 +378,7 @@ function create_grid(start_hour,number_of_hours,conv_power;output_filename::Stri
         DC_overlay_grid["gen"]["$count_"]["pmin"] = 0.0 
         DC_overlay_grid["gen"]["$count_"]["qmax"] =  DC_overlay_grid["gen"]["$count_"]["pmax"]*0.5
         DC_overlay_grid["gen"]["$count_"]["qmin"] = -DC_overlay_grid["gen"]["$count_"]["pmax"]*0.5
-        DC_overlay_grid["gen"]["$count_"]["cost"] = [0.0, 0.0]
+        DC_overlay_grid["gen"]["$count_"]["cost"] = [25.0, 0.0]
         DC_overlay_grid["gen"]["$count_"]["marginal_cost"] = 0.0
         DC_overlay_grid["gen"]["$count_"]["co2_add_on"] = 0.0
         DC_overlay_grid["gen"]["$count_"]["ncost"] = 2
@@ -400,7 +401,7 @@ function create_grid(start_hour,number_of_hours,conv_power;output_filename::Stri
         DC_overlay_grid["gen"]["$count_"]["pmin"] = 0.0 
         DC_overlay_grid["gen"]["$count_"]["qmax"] =  DC_overlay_grid["gen"]["$count_"]["pmax"]*0.5
         DC_overlay_grid["gen"]["$count_"]["qmin"] = -DC_overlay_grid["gen"]["$count_"]["pmax"]*0.5
-        DC_overlay_grid["gen"]["$count_"]["cost"] = [0.0, 0.0]
+        DC_overlay_grid["gen"]["$count_"]["cost"] = [50.0, 0.0]
         DC_overlay_grid["gen"]["$count_"]["marginal_cost"] = 0.0
         DC_overlay_grid["gen"]["$count_"]["co2_add_on"] = 0.0
         DC_overlay_grid["gen"]["$count_"]["ncost"] = 2
@@ -416,6 +417,32 @@ function create_grid(start_hour,number_of_hours,conv_power;output_filename::Stri
 
     
     ##### Conventional gens  #####
+    #=for idx in 1:length(solar_pv) 
+        count_ += 1
+        DC_overlay_grid["gen"]["$count_"] = Dict{String,Any}()
+        DC_overlay_grid["gen"]["$count_"]["index"] = deepcopy(count_)
+        DC_overlay_grid["gen"]["$count_"]["gen_bus"] = deepcopy(idx) # SUM OF THE ENTSO-E TYNDP CAPACITY
+        DC_overlay_grid["gen"]["$count_"]["pmax"] = xf["RES_MVA"]["$(flexible_gens[idx])2"]/DC_overlay_grid["baseMVA"]#5*10^5/DC_overlay_grid["baseMVA"] #High value to always have adequacy, assumption, to be discussed
+        DC_overlay_grid["gen"]["$count_"]["pmin"] = 0.0 
+        DC_overlay_grid["gen"]["$count_"]["qmax"] =  DC_overlay_grid["gen"]["$count_"]["pmax"]*0.5
+        DC_overlay_grid["gen"]["$count_"]["qmin"] = -DC_overlay_grid["gen"]["$count_"]["pmax"]*0.5
+        #########################################################################
+        DC_overlay_grid["gen"]["$count_"]["cost"] = [100.0, 0.0] # Made-up values
+        #########################################################################
+        DC_overlay_grid["gen"]["$count_"]["marginal_cost"] = 2.0 # Made-up values
+        DC_overlay_grid["gen"]["$count_"]["co2_add_on"] = 1.0 # Made-up values
+        DC_overlay_grid["gen"]["$count_"]["ncost"] = 2
+        DC_overlay_grid["gen"]["$count_"]["model"] = 2
+        DC_overlay_grid["gen"]["$count_"]["type"] = "Conventional"
+        DC_overlay_grid["gen"]["$count_"]["gen_status"] = 1
+        DC_overlay_grid["gen"]["$count_"]["vg"] = 1.0
+        DC_overlay_grid["gen"]["$count_"]["source_id"] = []
+        DC_overlay_grid["gen"]["$count_"]["name"] = "Conventional_gen_$(idx)"  # Assumption here, to be checked
+        push!(DC_overlay_grid["gen"]["$count_"]["source_id"],"gen")
+        push!(DC_overlay_grid["gen"]["$count_"]["source_id"], count_)
+    end=#
+
+    ##### VOLL  #####
     for idx in 1:length(solar_pv) 
         count_ += 1
         DC_overlay_grid["gen"]["$count_"] = Dict{String,Any}()
@@ -425,7 +452,9 @@ function create_grid(start_hour,number_of_hours,conv_power;output_filename::Stri
         DC_overlay_grid["gen"]["$count_"]["pmin"] = 0.0 
         DC_overlay_grid["gen"]["$count_"]["qmax"] =  DC_overlay_grid["gen"]["$count_"]["pmax"]*0.5
         DC_overlay_grid["gen"]["$count_"]["qmin"] = -DC_overlay_grid["gen"]["$count_"]["pmax"]*0.5
-        DC_overlay_grid["gen"]["$count_"]["cost"] = [10.0, 0.0] # Made-up values
+        #########################################################################
+        DC_overlay_grid["gen"]["$count_"]["cost"] = [100.0, 0.0] # Made-up values
+        #########################################################################
         DC_overlay_grid["gen"]["$count_"]["marginal_cost"] = 2.0 # Made-up values
         DC_overlay_grid["gen"]["$count_"]["co2_add_on"] = 1.0 # Made-up values
         DC_overlay_grid["gen"]["$count_"]["ncost"] = 2
