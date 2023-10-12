@@ -550,6 +550,8 @@ function solve_opf_timestep(data,RES,load,timesteps,conv_power;output_filename::
             l["pd"] = deepcopy(load["$t"]["Bus_"*l_id]["time_series"]*l["cosphi"])
             l["qd"] = 0.0#deepcopy(load["$t"]["Bus_"*l_id]["time_series"]*sqrt(1-(l["cosphi"])^2))
         end
+
+        #Sets price of most expensive generator based on regional RES penetration
         for (g_id,g) in test_case_timestep["gen"]
             if (g["type"] == "Conventional")
                 ratio=load_total[g["gen_bus"]]/res_total[g["gen_bus"]]
@@ -559,6 +561,9 @@ function solve_opf_timestep(data,RES,load,timesteps,conv_power;output_filename::
             end
         end
 
+
+        #Sets price of most expensive generator based on regional RES penetration
+        #VOLL is set to zero for all simulaitons at the moment
         for (g_id,g) in test_case_timestep["gen"]
             if (g["type"] == "VOLL")
                 ratio=load_total[g["gen_bus"]]/res_total[g["gen_bus"]]
@@ -567,7 +572,8 @@ function solve_opf_timestep(data,RES,load,timesteps,conv_power;output_filename::
                 g["cost"]=[cost,0]
             end
         end
-########################################################################################
+        
+        ########################################################################################
         #to adjust P2P converters 28 and 29
         #test_case["convdc"]["29"]
         test_case_timestep["convdc"]["25"]["Pacmax"]=30.0
@@ -583,13 +589,11 @@ function solve_opf_timestep(data,RES,load,timesteps,conv_power;output_filename::
         test_case_timestep["convdc"]["28"]["Pacmin"]=-30.0
         test_case_timestep["convdc"]["29"]["Pacmin"]=-30.0
         test_case_timestep["convdc"]["30"]["Pacmin"]=-30.0
-
-        #test_case_timestep["convdc"]["28"]["Pacmax"]=test_case_timestep["convdc"]["28"]["Pacrated"]=0.1
         #######################################################################################
 
-         ########################################################################################
+        ########################################################################################
         #to remove genertor 16
-        
+
         #=test_case_timestep["gen"]["16"]["pmax"]=0.0
 
         test_case_timestep["gen"]["16"]["pmin"]=0.0
@@ -598,7 +602,7 @@ function solve_opf_timestep(data,RES,load,timesteps,conv_power;output_filename::
 
         test_case_timestep["gen"]["16"]["qmin"]=-1*test_case_timestep["gen"]["16"]["pmax"]/2=#
         ##########################################################################################
-         
+            
 
         ########################################################################################
         #to remove P2P converters 28 and 29

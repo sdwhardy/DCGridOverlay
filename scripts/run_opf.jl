@@ -12,6 +12,8 @@ using Ipopt, Gurobi
 using PlotlyJS
 using FileIO
 
+include("create_grid_and_opf_functions.jl")
+
 #Simple test
 ##########################################################################
 # Define solvers 
@@ -328,7 +330,9 @@ for l in timesteps
 end
 
 
-############################################################
+#####################################################################
+#Only for testing purposes - to rapidly adjust infrastructure values#
+#####################################################################
 #=x=1
 y=1
 ps=[("19",220.0*x*y),("20",520.0*x*y),("21",1090.0*x*y),("22",860.0*x*y),("23",1520.0*x*y),("24",620.0*x*y)]
@@ -356,16 +360,16 @@ for p in ["1","2","7","8","13","14","19","20"]
 
 end=#
 
-
+########################################################################
+########################################################################
 ########################################################################
 
 result_ac, demand_series = solve_opf_timestep(test_case,selected_timesteps_RES_time_series,selected_timesteps_load_time_series,timesteps,conv_power)
 
-save("C:\\Users\\shardy\\Documents\\julia\\times_series_input_large_files\\supernode\\HVDC_HVAC_AC_powerflows_6GW.jld2",result_ac)
+#save("C:\\Users\\shardy\\Documents\\julia\\times_series_input_large_files\\supernode\\HVDC_HVAC_AC_powerflows_6GW.jld2",result_ac)
 
-result_ac=load("C:\\Users\\shardy\\Documents\\julia\\times_series_input_large_files\\supernode\\HVDC_HVAC_AC_powerflows_6GW.jld2")
+#result_ac=load("C:\\Users\\shardy\\Documents\\julia\\times_series_input_large_files\\supernode\\HVDC_HVAC_AC_powerflows_6GW.jld2")
 
-result_ac["475"]["solution"]["branchdc"][]
 
 congestion=[]
 for ts in keys(result_ac)
@@ -491,5 +495,3 @@ test_case["gen"]["1"]["pmax"]
     end
 
     CSV.write("results//scenarios_angles.csv", cables_df)
-
-test_case["gen"]["19"]
