@@ -11,7 +11,7 @@ using JuMP
 using Ipopt, Gurobi
 using PlotlyJS
 using FileIO
-using DataFrames, CSV 
+using DataFrames, CSV
 include("create_grid_and_opf_functions.jl")
 
 
@@ -21,39 +21,6 @@ conv_power = 6.0
 test_case_file = "DC_overlay_grid_$(conv_power)_GW_convdc.json"
 test_case = _PM.parse_file("./test_cases/$test_case_file")
 
-#remove DC grid
-#=for i=1:1:8
-    test_case["branchdc"][string(i)]["rateA"]=test_case["branchdc"][string(i)]["rateB"]=test_case["branchdc"][string(i)]["rateC"]=0.0
-    end=#
-
-#use real power only
-#[test_case["load"][string(i)]["pd"]=0 for i in 1:1:6]
-#=test_case["convdc"]["19"]["busac_i"]
-test_case["convdc"]["19"]["busdc_i"]
-
-test_case["bus"][string(1)]["bus_type"]=1
-test_case["bus"][string(2)]["bus_type"]=1
-test_case["bus"][string(4)]["bus_type"]=1
-test_case["bus"][string(5)]["bus_type"]=1
-test_case["bus"][string(6)]["bus_type"]=1
-for i=5:1:8
-    test_case["branch"][string(i)]["angmax"]=pi
-    test_case["branch"][string(i)]["angmin"]=-pi
-    end
-
-    for i=5:1:8
-        test_case["branch"][string(i)]["b_to"]=0.0
-        test_case["branch"][string(i)]["b_fr"]=0.0
-        end
-        [delete!(test_case["branch"],s) for s in ["5","8","6","7"]]
-        [delete!(test_case["branch"],s) for s in ["5"]]
-
-        [delete!(test_case["branchdc"],s) for s in ["1","2","3","4","5","8","6","7"]]#Overlay
-
-        [delete!(test_case["branchdc"],s) for s in ["9","10","11","12"]]#ptp
-        [delete!(test_case["branchdc"],s) for s in ["12"]]#ptp
-    #test_case["branch"]["5"]
-=#
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true)
 start_hour = 1
 number_of_hours = 8760
@@ -78,7 +45,7 @@ selected_timesteps_load_time_series = Dict{String,Any}()
 result_timesteps = Dict{String,Any}()
 
 #MAX LOAD/RES: 475
-#max LOAD ratio: 1124 
+#max LOAD ratio: 1124
 #max congestion: 1258
 #Min RES: 6363
 
@@ -89,14 +56,14 @@ timesteps = ["475"]
 #timesteps = collect(1:8760)
 
 for l in timesteps
-    if typeof(l) == String 
+    if typeof(l) == String
         selected_timesteps_RES_time_series["$l"] = Dict{String,Any}()
         for i in keys(RES_time_series)
             selected_timesteps_RES_time_series["$l"]["$i"] = Dict{String,Any}()
             selected_timesteps_RES_time_series["$l"]["$i"]["name"] = deepcopy(RES_time_series["$i"]["name"])
             selected_timesteps_RES_time_series["$l"]["$i"]["time_series"] = deepcopy(RES_time_series["$i"]["time_series"][parse(Int64,l)])
         end
-    elseif typeof(l) == Int64 
+    elseif typeof(l) == Int64
         selected_timesteps_RES_time_series["$l"] = Dict{String,Any}()
         for i in keys(RES_time_series)
             selected_timesteps_RES_time_series["$l"]["$i"] = Dict{String,Any}()
@@ -107,13 +74,13 @@ for l in timesteps
 end
 
 for l in timesteps
-    if typeof(l) == String 
+    if typeof(l) == String
         selected_timesteps_load_time_series["$l"] = Dict{String,Any}()
         for i in keys(load_time_series)
             selected_timesteps_load_time_series["$l"]["$i"] = Dict{String,Any}()
             selected_timesteps_load_time_series["$l"]["$i"]["time_series"] = deepcopy(load_time_series["$i"][parse(Int64,l)])
         end
-    elseif typeof(l) == Int64 
+    elseif typeof(l) == Int64
         selected_timesteps_load_time_series["$l"] = Dict{String,Any}()
         for i in keys(load_time_series)
             selected_timesteps_load_time_series["$l"]["$i"] = Dict{String,Any}()
@@ -188,7 +155,7 @@ br_r=[test_case["branchdc"][string(b)]["r"] for b in sort(parse.(Int64,keys(last
 DCtl=DataFrame(:Ldc=>Ldc,:type=>type,:f_bus=>f_bus,:t_bus=>t_bus,:capacity=>P_max,:br_r=>br_r)
 CSV.write("results//DC_tl.csv", DCtl)
 
-#ACtl description  
+#ACtl description
 P_max=[test_case["branch"][string(b)]["rate_a"] for b in sort(parse.(Int64,keys(last(first(result_ac))["solution"]["branch"])))]
 t_bus=[test_case["branch"][string(b)]["t_bus"] for b in sort(parse.(Int64,keys(last(first(result_ac))["solution"]["branch"])))]
 f_bus=[test_case["branch"][string(b)]["f_bus"] for b in sort(parse.(Int64,keys(last(first(result_ac))["solution"]["branch"])))]
